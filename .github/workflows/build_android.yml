@@ -36,8 +36,13 @@ jobs:
     - name: Build debug APK
       run: flutter build apk --debug --verbose
 
+    - name: Find and Upload APK
+      run: |
+        find build/app/outputs -name "app-debug.apk" -exec cp {} app-debug.apk \;
+      id: find_apk
+
     - name: Upload APK artifact
       uses: actions/upload-artifact@v4
       with:
         name: app-debug-apk
-        path: build/app/outputs/flutter-apk/app-debug.apk
+        path: app-debug.apk
