@@ -12,8 +12,7 @@ class ApiException implements Exception {
 }
 
 class ApiService {
-  static const String _baseUrl = "https://api.kluster.ai/v1";
-  static const String _model = "deepseek-ai/DeepSeek-R1-0528";
+  static const String _baseUrl = "https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent";
   static String? _apiKey;
 
   // Load the API key only once
@@ -46,28 +45,33 @@ class ApiService {
 
     try {
       final response = await http.post(
-        Uri.parse('$_baseUrl/chat/completions'),
+        Uri.parse('$_baseUrl?key=$_apiKey'),
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': 'Bearer $_apiKey',
         },
         body: jsonEncode({
-          'model': _model,
-          'messages': [
-            {'role': 'user', 'content': enhancedPrompt},
-          ],
-          'max_tokens': 500,
-          'temperature': 0.8,
+          'contents': [
+            {
+              'parts': [
+                {'text': enhancedPrompt}
+              ]
+            }
+          ]
         }),
       );
 
       if (response.statusCode == 200) {
-        final Map<String, dynamic> data = jsonDecode(utf8.decode(response.bodyBytes)); // Ensure UTF-8 decoding
-        final content = data['choices']?[0]?['message']?['content'];
+        final Map<String, dynamic> data = jsonDecode(utf8.decode(response.bodyBytes));
+        final content = data['candidates']?[0]?['content']?['parts']?[0]?['text'];
         
         if (content != null) {
           return content;
         } else {
+          // Handle cases where the response might be empty or blocked
+          final finishReason = data['candidates']?[0]?['finishReason'];
+          if (finishReason == 'SAFETY') {
+            throw ApiException("Waduh, jawabanku diblokir karena terlalu berbahaya! Mungkin kita bahas yang lebih santai saja? 😅");
+          }
           throw ApiException("Hmm, sepertinya aku kehilangan kata-kata... seperti saat pertama kali menyelam! 🤿");
         }
       } else {
