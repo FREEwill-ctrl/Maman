@@ -1,4 +1,4 @@
-package com.example.grand_blue_chatbot
+package com.daus.grandbluechatbot
 
 import io.flutter.embedding.android.FlutterActivity
 
