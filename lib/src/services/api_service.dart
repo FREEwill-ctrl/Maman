@@ -30,18 +30,13 @@ class ApiService {
 
   static Future<String> getChatbotResponse(String userMessage) async {
     if (_apiKey == null) {
-      // This should ideally not be called here, but as a fallback.
       await initialize();
     }
 
-    const String promptTemplate = """Kamu adalah chatbot AI dengan kepribadian seperti karakter dari anime Grand Blue. 
+    const String systemInstruction = """Kamu adalah chatbot AI dengan kepribadian seperti karakter dari anime Grand Blue. 
       Kamu suka humor, santai, dan sering membicarakan tentang menyelam, pantai, dan kehidupan kampus yang seru. 
       Jawab dengan gaya yang ceria, lucu, dan kadang sedikit berlebihan seperti karakter Grand Blue. 
-      Gunakan bahasa Indonesia yang santai dan friendly.
-      
-      Pesan user: """;
-      
-    final String enhancedPrompt = "$promptTemplate$userMessage";
+      Gunakan bahasa Indonesia yang santai dan friendly.""";
 
     try {
       final response = await http.post(
@@ -51,11 +46,21 @@ class ApiService {
         },
         body: jsonEncode({
           'contents': [
-            {
-              'parts': [
-                {'text': enhancedPrompt}
-              ]
-            }
+            // System/persona instruction
+            { 'role': 'user', 'parts': [{ 'text': systemInstruction }]},
+            { 'role': 'model', 'parts': [{ 'text': "Siap! Aku akan jadi teman ngobrolmu yang paling asyik!" }]},
+            // Actual user message
+            { 'role': 'user', 'parts': [{ 'text': userMessage }]}
+          ],
+          'generationConfig': {
+            'temperature': 0.8,
+            'maxOutputTokens': 500,
+          },
+          'safetySettings': [
+            { 'category': 'HARM_CATEGORY_HARASSMENT', 'threshold': 'BLOCK_MEDIUM_AND_ABOVE' },
+            { 'category': 'HARM_CATEGORY_HATE_SPEECH', 'threshold': 'BLOCK_MEDIUM_AND_ABOVE' },
+            { 'category': 'HARM_CATEGORY_SEXUALLY_EXPLICIT', 'threshold': 'BLOCK_MEDIUM_AND_ABOVE' },
+            { 'category': 'HARM_CATEGORY_DANGEROUS_CONTENT', 'threshold': 'BLOCK_MEDIUM_AND_ABOVE' },
           ]
         }),
       );
@@ -67,7 +72,6 @@ class ApiService {
         if (content != null) {
           return content;
         } else {
-          // Handle cases where the response might be empty or blocked
           final finishReason = data['candidates']?[0]?['finishReason'];
           if (finishReason == 'SAFETY') {
             throw ApiException("Waduh, jawabanku diblokir karena terlalu berbahaya! Mungkin kita bahas yang lebih santai saja? 😅");
@@ -75,16 +79,13 @@ class ApiService {
           throw ApiException("Hmm, sepertinya aku kehilangan kata-kata... seperti saat pertama kali menyelam! 🤿");
         }
       } else {
-        // Provide more specific error from the API if possible
         final errorBody = jsonDecode(utf8.decode(response.bodyBytes));
         final errorMessage = errorBody?['error']?['message'] ?? "No error message provided.";
         throw ApiException("Waduh, ada masalah teknis nih! (Error ${response.statusCode}: $errorMessage)");
       }
     } on http.ClientException catch (e) {
-      // Handle network-related errors
       throw ApiException("Ups! Koneksi bermasalah seperti sinyal di bawah laut! 📶❌ Coba lagi ya! Details: ${e.message}");
     } catch (e) {
-      // Catch any other unexpected errors
       throw ApiException("Terjadi kesalahan yang tidak terduga: ${e.toString()}");
     }
   }
