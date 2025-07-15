@@ -54,7 +54,6 @@ android {
             signingConfig = signingConfigs.debug
             // Enable R8 code shrinking, obfuscation, and optimization
             minifyEnabled true
-            useProguard true
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
         }
     }
